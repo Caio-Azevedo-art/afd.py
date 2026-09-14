@@ -1,0 +1,49 @@
+# afd.py
+from dataclasses import dataclass, field
+
+
+class AFDInvalido(Exception):
+    """A quíntupla fornecida não satisfaz a definição de AFD."""
+
+
+@dataclass(frozen=True)
+class AFD:
+    estados: frozenset[str]                    # Q
+    alfabeto: frozenset[str]                   # Σ
+    transicoes: dict[tuple[str, str], str]     # δ
+    inicial: str                               # q₀
+    finais: frozenset[str]                     # F
+
+    def __post_init__(self) -> None:
+        self.validar()
+
+    def validar(self) -> None:
+        if not self.estados:
+            raise AFDInvalido("Q não pode ser vazio.")
+        if not self.alfabeto:
+            raise AFDInvalido("Σ não pode ser vazio.")
+        if self.inicial not in self.estados:
+            raise AFDInvalido(f"q₀={self.inicial!r} não pertence a Q.")
+
+        fora = self.finais - self.estados
+        if fora:
+            raise AFDInvalido(f"F contém estados fora de Q: {sorted(fora)}")
+
+        faltando = [
+            (q, a)
+            for q in sorted(self.estados)
+            for a in sorted(self.alfabeto)
+            if (q, a) not in self.transicoes
+        ]
+        if faltando:
+            raise AFDInvalido(
+                f"δ não é total. Faltam {len(faltando)} transições: {faltando}"
+            )
+
+        for (q, a), destino in self.transicoes.items():
+            if q not in self.estados:
+                raise AFDInvalido(f"δ parte de {q!r}, que não está em Q.")
+            if a not in self.alfabeto:
+                raise AFDInvalido(f"δ lê {a!r}, que não está em Σ.")
+            if destino not in self.estados:
+                raise AFDInvalido(f"δ({q},{a}) leva a {destino!r}, fora de Q.")
